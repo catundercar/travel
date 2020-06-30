@@ -1,6 +1,6 @@
-package sorts
+package sort
 
-func Bubblesort(nums []int) {
+func BubbleSort(nums []int) {
 	for i := 0; i < len(nums); i++ {
 		flag := false
 		for j := 0; j < len(nums)-i-1; j++ {
