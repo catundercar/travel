@@ -7,7 +7,7 @@ import (
 
 func TestMoveZero(t *testing.T) {
 	// t.Fatal("not implemented")
-	a := []int{0, 1, 2, 3, 4, 0, 5, 3, 0}
+	a := []int{1, 1, 1, 1, 0, 0, 0, 0, 1}
 	fmt.Println(a)
 	movezore(a)
 	fmt.Println(a)
