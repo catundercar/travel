@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 // Engine contains a handle of mongodb and configures.
@@ -52,9 +53,13 @@ const DefaultTimeout = 10 * time.Second
 // Init initializes the mongodb client.
 func (e *Engine) Init() error {
 	opts := conf2options(e.Conf)
-	c, err := mongo.Connect(NewCtx(e.Conf.ConnectTimeout),
-		opts.ApplyURI(fmt.Sprintf("mongodb://%s:%s/%s", e.Conf.Host, e.Conf.Port, e.Conf.DbName)))
+	c, err := mongo.Connect(NewCtx(40*time.Second),
+		opts.ApplyURI(fmt.Sprintf("mongodb://%s:%s/%s", e.Conf.Host, e.Conf.Port, e.Conf.DbName)).SetConnectTimeout(time.Second*10))
 	if err != nil {
+		return err
+	}
+
+	if err := c.Ping(NewCtx(40*time.Second), readpref.Primary()); err != nil {
 		return err
 	}
 
