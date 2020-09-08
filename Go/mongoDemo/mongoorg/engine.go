@@ -18,11 +18,7 @@ type Engine struct {
 }
 
 type session struct {
-	db *mongo.Database
-}
-
-// Database is an agent of mongo.Client.
-type Database struct {
+	db *Database
 }
 
 // Conf contains options to configure a Engine instance.
@@ -48,13 +44,27 @@ func WithConf(conf *Conf) EngineOpt {
 }
 
 // DefaultTimeout 默认超时时间
-const DefaultTimeout = 10 * time.Second
+const DefaultTimeout = 5 * time.Second
+
+// ConnectTimeout the time limit of connect mongodb server.
+var ConnectTimeout time.Duration
+
+// SocketTimeout specifies how long the driver will wait for a socket read or write to return before returning a
+// network error.
+var SocketTimeout time.Duration
 
 // Init initializes the mongodb client.
 func (e *Engine) Init() error {
 	opts := conf2options(e.Conf)
-	c, err := mongo.Connect(NewCtx(40*time.Second),
-		opts.ApplyURI(fmt.Sprintf("mongodb://%s:%s/%s", e.Conf.Host, e.Conf.Port, e.Conf.DbName)).SetConnectTimeout(time.Second*10))
+	c, err := mongo.Connect(
+		NewCtx(e.Conf.ConnectTimeout),
+		opts.ApplyURI(fmt.Sprintf("mongodb://%s:%s/%s?connectTimeout=5s", e.Conf.Host, e.Conf.Port, e.Conf.DbName)).SetConnectTimeout(e.Conf.ConnectTimeout),
+	)
+	if err != nil {
+		return err
+	}
+
+	err = c.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
 		return err
 	}
@@ -65,19 +75,21 @@ func (e *Engine) Init() error {
 
 	e.c = c
 	e.session = &session{
-		db: c.Database(e.Conf.DbName),
-	}
+		db: &Database{
+			c.Database(e.Conf.DbName),
+		}}
 	return nil
 }
 
 func conf2options(conf *Conf) *options.ClientOptions {
-	return &options.ClientOptions{
-		ConnectTimeout: &conf.ConnectTimeout,
-		SocketTimeout:  &conf.SocketTimeout,
-		MaxPoolSize:    &conf.MaxPoolSize,
-		MinPoolSize:    &conf.MinPoolSize,
-		Direct:         &conf.Direct,
-	}
+	optsc := options.Client()
+	optsc = optsc.SetConnectTimeout(conf.ConnectTimeout)
+	optsc = optsc.SetSocketTimeout(conf.SocketTimeout)
+	optsc = optsc.SetMaxPoolSize(conf.MaxPoolSize)
+	optsc = optsc.SetMinPoolSize(conf.MinPoolSize)
+	optsc = optsc.SetDirect(conf.Direct)
+
+	return optsc
 }
 
 // NewEngine returns a engine instance.
@@ -114,7 +126,7 @@ func NewCtx(timeout time.Duration) context.Context {
 	return ctx
 }
 
-func (e *Engine) getDB() *mongo.Database {
+func (e *Engine) getDB() *Database {
 	return e.session.db
 }
 
@@ -122,7 +134,7 @@ func (e *Engine) getDB() *mongo.Database {
 func (e *Engine) Insert(collection string, document interface{}) error {
 	db := e.getDB()
 
-	_, err := db.Collection(collection).InsertOne(NewCtx(e.Conf.SocketTimeout), document)
+	_, err := db.mdb.Collection(collection).InsertOne(NewCtx(e.Conf.SocketTimeout), document)
 	if err != nil {
 		return err
 	}
@@ -134,7 +146,7 @@ func (e *Engine) Insert(collection string, document interface{}) error {
 func (e *Engine) InsertMany(collection string, documents []interface{}) error {
 	db := e.getDB()
 
-	_, err := db.Collection(collection).InsertMany(NewCtx(e.Conf.SocketTimeout), documents)
+	_, err := db.mdb.Collection(collection).InsertMany(NewCtx(e.Conf.SocketTimeout), documents)
 	if err != nil {
 		return err
 	}
@@ -142,11 +154,11 @@ func (e *Engine) InsertMany(collection string, documents []interface{}) error {
 	return nil
 }
 
-// Upsert find one document and replace it.
-func (e *Engine) Upsert(collection string, filter interface{}, document interface{}) error {
+// upsert find one document and replace it
+func (e *Engine) upsert(collection string, filter interface{}, document interface{}) error {
 	db := e.getDB()
 	upsert := true
-	result := db.Collection(collection).FindOneAndReplace(NewCtx(e.Conf.SocketTimeout),
+	result := db.mdb.Collection(collection).FindOneAndReplace(NewCtx(e.Conf.SocketTimeout),
 		filter, document, &options.FindOneAndReplaceOptions{
 			Upsert: &upsert,
 		})
