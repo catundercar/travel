@@ -7,6 +7,8 @@ import (
 
 type taskFunc func()
 
+// DoTaskConcurrent can do tasks concurrently.The concurrentNum is used to set the number of
+// goroutines.
 func DoTaskConcurrent(concurrentNum int, fns chan taskFunc) {
 	fmt.Println(runtime.GOMAXPROCS(4))
 	taskNum := len(fns)
