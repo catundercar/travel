@@ -11,5 +11,7 @@
 [代码示例](https://github.com/Mrliu8023/CS-Study/tree/master/DateStruct/sorts)
 
 ## Golang
+[Go-Memory-Model](https://github.com/Mrliu8023/CS-Study/blob/master/Go/concurrency/go-memory-model/Go%20Memory%20Model.md)
+
 ## Linux
 
