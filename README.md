@@ -12,6 +12,6 @@
 
 ## Golang
 [Go-Memory-Model](https://github.com/Mrliu8023/CS-Study/blob/master/Go/concurrency/go-memory-model/Go%20Memory%20Model.md)
-
+[embed](https://github.com/Mrliu8023/CS-Study/blob/master/Go/pkgEmbed/embed%20in%20go.md)
 ## Linux
 
